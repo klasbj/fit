@@ -39,7 +39,7 @@ import Control.Applicative
 import Control.Monad (replicateM)
 import Control.Monad.Trans (lift)
 import Data.Attoparsec.ByteString (Parser)
-import qualified Data.Attoparsec.ByteString as A (parseOnly, string, anyWord8, takeTill)
+import qualified Data.Attoparsec.ByteString as A (parseOnly, string, anyWord8, take)
 import qualified Data.Attoparsec.Combinator as A (count, many')
 import Data.Bits (testBit, shiftR, (.&.))
 import Data.ByteString (ByteString)
@@ -47,6 +47,7 @@ import qualified Data.ByteString as B (init)
 import Data.Sequence (Seq)
 import qualified Data.Sequence as S (fromList)
 import Data.Text (Text)
+import qualified Data.Text as T (takeWhile)
 import Data.Text.Encoding (decodeUtf8)
 import Data.Word (Word8)
 
@@ -134,15 +135,15 @@ parseField (FieldDef num size bt) = do
   let numValues = size `div` (btSize bt)
 
   field <- if numValues == 1 || (bt == FitString)
-           then SingletonField num <$> parseValue bt
+           then SingletonField num <$> parseValue numValues bt
            else ArrayField num <$> parseArray numValues bt
 
   case field of
    TimestampField t -> storeTimestamp (Timestamp t) >> return field
    _ -> return field
 
-parseValue :: BaseType -> FitParser Value
-parseValue bt =
+parseValue :: Int -> BaseType -> FitParser Value
+parseValue cnt bt =
   case bt of
    FitEnum -> EnumValue <$> word8
    FitSInt8 -> SInt8Value <$> int8
@@ -151,13 +152,15 @@ parseValue bt =
    FitUInt16 -> UInt16Value <$> archWord16
    FitSInt32 -> SInt32Value <$> archInt32
    FitUInt32 -> UInt32Value <$> archWord32
-   FitString -> StringValue <$> lift parseString
+   FitString -> StringValue <$> lift parseStr
    FitFloat32 -> Float32Value <$> archFloat32
    FitFloat64 -> Float64Value <$> archFloat64
    FitUInt8Z -> UInt8ZValue <$> word8
    FitUInt16Z -> UInt16ZValue <$> archWord16
    FitUInt32Z -> UInt32ZValue <$> archWord32
    FitByte -> ByteValue <$> word8
+  where
+    parseStr = parseString cnt
 
 -- | This function will fail if the 'BaseType' is 'FitString'. This implementation
 -- currently doesn't support arrays of strings, but treats char arrays as always
@@ -187,8 +190,8 @@ parseSeq :: Int -> FitParser a -> FitParser (Seq a)
 parseSeq n p = S.fromList <$> A.count n p
 
 -- | Parse a null-terminated UTF-8 string.
-parseString :: Parser Text
-parseString = decodeUtf8 <$> A.takeTill (== 0) <* A.anyWord8
+parseString :: Int -> Parser Text
+parseString cnt = (T.takeWhile (/='\0')) . decodeUtf8 <$> A.take cnt
 
 -- | Parse a compressed-timestamp message, using the 'TimeOffset' from the
 -- compressed-timestamp message header.
