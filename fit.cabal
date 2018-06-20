@@ -1,5 +1,5 @@
 name:                fit
-version:             0.5.1
+version:             0.5.3
 license:             BSD3
 license-file:        LICENSE
 author:              Matt Giles
@@ -44,7 +44,7 @@ library
                      , Fit.Internal.Numbers
                      , Fit.Internal.Parse
   ghc-options:         -Wall
-  build-depends:       base >=4.7 && <4.9
+  build-depends:       base >=4.7 && <4.12
                      , attoparsec >= 0.10.3
                      , bytestring
                      , text
@@ -58,7 +58,7 @@ test-suite test-fit
   main-is:           test/TestFit.hs
   default-language:  Haskell2010
   ghc-options:       -Wall
-  build-depends:      base >=4.7 && <4.9
+  build-depends:      base >=4.7 && <4.12
                     , fit
                     , hspec
                     , hspec-attoparsec
